@@ -4,9 +4,16 @@ use http_body_util::Full;
 use hyper::{body::Bytes, server::conn::http1, service::service_fn, Request, Response};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
+use tracing::info;
+use tracing_subscriber::fmt::format::FmtSpan;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .with_span_events(FmtSpan::CLOSE)
+        .init();
+
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
     // We create a TcpListener and bind it to 127.0.0.1:3000
@@ -25,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             // Finally, we bind the incoming connection to our `hello` service
             if let Err(err) = http1::Builder::new()
                 // `service_fn` converts our function in a `Service`
-                .serve_connection(io, service_fn(hello))
+                .serve_connection(io, service_fn(handle_request))
                 .await
             {
                 println!("Error serving connection: {:?}", err);
@@ -34,6 +41,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 }
 
-async fn hello(_: Request<impl hyper::body::Body>) -> Result<Response<Full<Bytes>>, Infallible> {
+#[tracing::instrument(skip(req))]
+async fn handle_request(
+    req: Request<impl hyper::body::Body>,
+) -> Result<Response<Full<Bytes>>, Infallible> {
+    info!("{}", req.uri());
     Ok(Response::new(Full::new(Bytes::from("Hello World!"))))
 }
