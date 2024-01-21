@@ -174,8 +174,9 @@ impl Service<Request> for Server {
 
                 info!("Component loaded. Linking...");
 
-                let linker = Linker::new(&this.engine);
-                //command::add_to_linker(&mut linker)?; // Do I want this?
+                let mut linker = Linker::new(&this.engine);
+                command::add_to_linker(&mut linker)?; // Do I want this?
+                wasmtime_wasi_http::bindings::wasi::http::types::add_to_linker(&mut linker, |t| t)?;
 
                 info!("Creating a store...");
                 let mut store = this.store(&this.engine)?;
